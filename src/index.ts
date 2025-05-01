@@ -36,41 +36,60 @@ async function main() {
     input_message.push({ role: "user", content: userPrompt });
 
     while (true) {
-      const response = await client.responses.create({
-        model: "gpt-4.1-mini",
-        input: input_message,
-        tools: tools,
-      });
-
-      const toolCall = response.output[0];
-      input_message.push(toolCall);
-
-      if (toolCall.type === "function_call") {
-        
-        const toolName = toolCall.name;
-        const toolArgs = JSON.parse(toolCall.arguments);
-
-        log(chalk.magenta(`=========================== ${toolName.split("_").join(" ").toUpperCase()} ===========================`));
-
-        log(chalk.blue("Tool call: ", chalk.red(toolName)));
-        log(chalk.blue("Tool args: ", chalk.red(toolCall.arguments)));
-
-        const result = call_tools(toolName, toolArgs);
-        input_message.push({
-          type: "function_call_output",
-          call_id: toolCall.call_id,
-          output: result?.toString() || "",
+      try {
+        const response = await client.responses.create({
+          model: "gpt-4.1",
+          input: input_message,
+          tools: tools,
+          text: {
+            format: {
+              "type": "json_object",
+            },
+          },
         });
-        log(chalk.blue("Tool call output: ", chalk.green(result?.toString())));
-        log(chalk.magenta('============================================================================='));
-      }
 
-      if(response.output_text){
-        log(chalk.blue("response: ", chalk.white(response.output_text)));
-      }
+        const toolCall = response.output[0];
 
-      if (response.output_text === "stop") {
-        break;
+        if (toolCall.type === "function_call") {
+          log(chalk.yellow("Raw response: ", toolCall));
+          input_message.push(toolCall);
+
+          const toolName = toolCall.name;
+          const toolArgs = JSON.parse(toolCall.arguments);
+
+          log(chalk.magenta(`=========================== ${toolName.split("_").join(" ").toUpperCase()} ===========================`));
+
+          log(chalk.blue("Tool call: ", chalk.red(toolName)));
+          log(chalk.blue("Tool args: ", chalk.red(toolCall.arguments)));
+
+          const result = call_tools(toolName, toolArgs);
+          input_message.push({
+            type: "function_call_output",
+            call_id: toolCall.call_id,
+            output: result?.toString() || "",
+          });
+          log(chalk.blue("Tool call output: ", chalk.green(result?.toString())));
+          log(chalk.magenta('============================================================================='));
+        }
+
+        if (response.output_text) {
+          try {
+            const output = JSON.parse(response.output_text);
+            input_message.push({ role: "assistant", content: response.output_text });
+            log(chalk.blue("response: ", chalk.white(output.message)));
+            if (output.type === "complete" || output.type === "query") {
+              break;
+            }
+          } catch (error) {
+            log(chalk.red("Error parsing response: ", error));
+            log(chalk.yellow("Raw response: ", response.output_text));
+            break;
+          }
+        }
+      } catch (error) {
+        log(chalk.red("Error: ", error));
+        rl.close();
+        return
       }
     }
   }
