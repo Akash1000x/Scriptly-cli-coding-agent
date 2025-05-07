@@ -2,6 +2,9 @@
   "name": "cursor-in-terminal",
   "version": "1.0.0",
   "main": "index.js",
+  "bin": {
+    "scriptly": "./dist/index.js"
+  },
   "scripts": {
     "build": "tsc -b",
     "dev": "tsc -b && node dist/index.js",
