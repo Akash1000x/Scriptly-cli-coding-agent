@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import chalk from "chalk";
 import dotenv from "dotenv";
 import OpenAI from "openai";
@@ -18,6 +19,9 @@ const client = new OpenAI();
 
 
 async function main() {
+  log(chalk.cyan.bold.bgYellow("Welcome to Scriptly CLI"));
+  log("\n");
+
   const input_message: ResponseInput = [
     { role: "system", content: systemPrompt },
   ];
@@ -28,7 +32,7 @@ async function main() {
   });
   while (true) {
     const userPrompt = await new Promise<string>((resolve) => {
-      rl.question(chalk.blue("Enter your prompt >> "), resolve);
+      rl.question(chalk.blue("Enter your prompt>> "), resolve);
     });
 
     if (!userPrompt) break;
@@ -51,7 +55,6 @@ async function main() {
         const toolCall = response.output[0];
 
         if (toolCall.type === "function_call") {
-          log(chalk.yellow("Raw response: ", toolCall));
           input_message.push(toolCall);
 
           const toolName = toolCall.name;
